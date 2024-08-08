@@ -22,7 +22,7 @@ export class UsersService {
     return user;
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  async findByEmail(email: string): Promise<User | undefined | null> {
     return this.usersRepository.findOneBy({ email });
   }
 
@@ -36,15 +36,25 @@ export class UsersService {
   }
 
   async update(id: number, updateUser: Partial<User>): Promise<User> {
-    const user = await this.findOne(id); 
+    const user = await this.usersRepository.findOneBy({ id });
 
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
 
-    if (updateUser.name === undefined || updateUser.email === undefined || updateUser.password === undefined) {
-      throw new BadRequestException('Missing required fields for update');
+    if (updateUser.name === undefined && updateUser.email === undefined && updateUser.password === undefined) {
+      throw new BadRequestException('At least one field (name, email, password) must be provided for update');
     }
 
     await this.usersRepository.update(id, updateUser);
-    return this.usersRepository.findOneBy({ id });
+
+    const updatedUser = await this.usersRepository.findOneBy({ id });
+
+    if (!updatedUser) {
+      throw new NotFoundException(`Failed to retrieve updated user with ID ${id}`);
+    }
+
+    return updatedUser;
   }
 
   async remove(id: number): Promise<void> {
